@@ -241,18 +241,23 @@
                             `;
                         }
 
-               if (videoUrl) {
+if (videoUrl) {
     popupContent += `
-        <p><strong>Video de Redes:</strong><br>
-            <video class="popup-media" controls preload="metadata" playsinline>
-                <source src="${videoUrl}" type="video/mp4">
-                Tu navegador no soporta streaming directo.
-            </video>
-            <br>
-            <a href="${videoUrl}" target="_blank" style="font-size: 11px; color: #2980b9; text-decoration: underline; display: block; margin-top: 4px;">
-                🔗 Abrir / Descargar video en pestaña nueva
-            </a>
-        </p>
+        <div style="margin-top: 8px;">
+            <p><strong>Video de Redes:</strong></p>
+            <div style="position: relative; background: #000; border-radius: 6px; width: 100%; max-width: 350px; height: 200px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+                <video class="popup-media" controls preload="none" playsinline style="width: 100%; height: 100%; object-fit: cover;" onclick="this.src='${videoUrl}'; this.play();">
+                    <source src="" type="video/mp4">
+                    Tu navegador no soporta streaming.
+                </video>
+                <div class="play-overlay" style="position: absolute; color: white; pointer-events: none; font-size: 12px; background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 4px;">
+                    ▶️ Hacer clic para cargar e iniciar video
+                </div>
+            </div>
+            <a href="${videoUrl}" target="_blank" style="font-size: 11px; color: #2980b9; text-decoration: underline; display: block; margin-top: 6px; font-weight: 600;">
+                📥 Descargar video directo (Más rápido)
+            </h6>
+        </div>
     `;
 }
 
@@ -262,7 +267,18 @@
                             </div>
                         `;
 
-                        L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
+                   const marker = L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
+
+// Evento para ocultar el texto flotante cuando el usuario reproduce el video
+marker.on('popupopen', function() {
+    const videoEl = document.querySelector('.leaflet-popup-content video');
+    const overlayEl = document.querySelector('.leaflet-popup-content .play-overlay');
+    if (videoEl && overlayEl) {
+        videoEl.addEventListener('play', () => {
+            overlayEl.style.display = 'none';
+        });
+    }
+});
                     }
                 });
 
