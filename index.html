@@ -167,9 +167,8 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
 
-        // 3. URL de la API de KoboToolbox
-        const koboApiUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';       
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(koboApiUrl)}`;
+        // 3. URL de la API de KoboToolbox    
+        const proxyUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';
 
         async function cargarAlertas() {
             try {
