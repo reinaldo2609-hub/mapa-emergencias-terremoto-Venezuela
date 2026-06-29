@@ -241,13 +241,20 @@
                             `;
                         }
 
-                        if (videoUrl) {
-                            popupContent += `
-                                <p><strong>Video de Redes:</strong><br>
-                                    <video src="${videoUrl}" controls class="popup-media"></video>
-                                </p>
-                            `;
-                        }
+               if (videoUrl) {
+    popupContent += `
+        <p><strong>Video de Redes:</strong><br>
+            <video class="popup-media" controls preload="metadata" playsinline>
+                <source src="${videoUrl}" type="video/mp4">
+                Tu navegador no soporta streaming directo.
+            </video>
+            <br>
+            <a href="${videoUrl}" target="_blank" style="font-size: 11px; color: #2980b9; text-decoration: underline; display: block; margin-top: 4px;">
+                🔗 Abrir / Descargar video en pestaña nueva
+            </a>
+        </p>
+    `;
+}
 
                         popupContent += `
                                 <hr style="border: 0; border-top: 1px solid #eee; margin: 8px 0;">
