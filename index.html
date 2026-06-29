@@ -138,7 +138,6 @@
 </head>
 <body>
 
-    <!-- Banner de Título e Interfaz Contextual -->
     <div class="map-header">
         <h1>Monitoreo Digital de Emergencias</h1>
         <p>Plataforma de georreferenciación y validación de reportes multimedia publicados por usuarios y periodistas en redes sociales.</p>
@@ -150,9 +149,9 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
     <script>
-        // 1. Inicializar el mapa centrado en Caracas (Controles de zoom movidos abajo a la derecha para no chocar con el título)
-const map = L.map('map', { zoomControl: false }).setView([10.6, -67.0], 12);
-L.control.zoom({ position: 'bottomright' }).addTo(map);
+        // 1. Inicializar el mapa centrado en el Estado La Guaira con zoom adaptado
+        const map = L.map('map', { zoomControl: false }).setView([10.5950, -66.9300], 11);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // 2. Capa base
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -167,12 +166,11 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
         });
 
- // 3. Configuración de API con Token y Túnel CORS (corsproxy.io)
-        const koboApiUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';
-        // Envolvemos la URL de Kobo en un proxy que SI permite pasar Tokens de seguridad
+        // 3. Configuración de API con Token y Túnel CORS Seguro (corsproxy.io)
+        const koboApiUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';       
         const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(koboApiUrl);
 
-        async function fetchConTimeout(url, opciones, timeout = 15000) {
+        async function fetchConTimeout(url, opciones, timeout = 25000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
             try {
@@ -187,19 +185,90 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         async function cargarAlertas(reintentos = 3) {
             try {
-                // ATENCIÓN: Ahora le pedimos los datos a proxyUrl, no a koboApiUrl
+                // Consultamos directamente a través de corsproxy.io usando el Token estructurado
                 const response = await fetchConTimeout(proxyUrl, {
                     method: 'GET',
                     headers: {
                         'Authorization': 'Token d94bc9bc2191044fdc135d0ccb2466a113c93664',
                         'Accept': 'application/json'
                     }
-                }, 20000); 
+                });
 
                 if (!response.ok) throw new Error(`Error de red: ${response.status}`);
                 
                 const data = await response.json(); 
                 const registros = data.results || [];
+                
+                document.getElementById('report-counter').innerText = `📊 ${registros.length} Reportes Verificados`;
+
+                registros.forEach(registro => {
+                    if (registro._geolocation && registro._geolocation.length >= 2) {
+                        const lat = parseFloat(registro._geolocation[0]);
+                        const lng = parseFloat(registro._geolocation[1]);
+                        if (isNaN(lat) || isNaN(lng)) return;
+
+                        const descripcion = registro['descripcion_emergencia'] || 'Sin descripción disponible.';
+                        const fecha = registro['fecha_de_alerta'] || 'Reciente';
+                        const fuente = registro['Fuente_de_la_informaci_n'] || 'Usuario de Redes Sociales';
+
+                        let fotoUrl = '';
+                        let videoUrl = '';
+
+                        if (registro._attachments && registro._attachments.length > 0) {
+                            const adjuntoFoto = registro._attachments.find(att => att.question_xpath === 'evidencia_foto');
+                            if (adjuntoFoto) {
+                                fotoUrl = adjuntoFoto.download_medium_url || adjuntoFoto.download_url || '';
+                            }
+
+                            const adjuntoVideo = registro._attachments.find(att => att.question_xpath === 'evidencia_video');
+                            if (adjuntoVideo) {
+                                videoUrl = adjuntoVideo.download_url || '';
+                            }
+                        }
+
+                        let popupContent = `
+                            <div class="popup-emergencia">
+                                <h3>📍 Reporte de Campo</h3>
+                                <p><strong>Descripción:</strong> ${descripcion}</p>
+                                <p><strong>Verificación / Fuente:</strong> <span style="color: #2980b9; font-weight: bold;">${fuente}</span></p>
+                        `;
+
+                        if (fotoUrl) {
+                            popupContent += `
+                                <p><strong>Captura de Origen:</strong><br>
+                                    <img src="${fotoUrl}" class="popup-media" alt="Evidencia" onerror="this.style.display='none';">
+                                </p>
+                            `;
+                        }
+
+                        if (videoUrl) {
+                            popupContent += `
+                                <p><strong>Video de Redes:</strong><br>
+                                    <video src="${videoUrl}" controls class="popup-media"></video>
+                                </p>
+                            `;
+                        }
+
+                        popupContent += `
+                                <hr style="border: 0; border-top: 1px solid #eee; margin: 8px 0;">
+                                <p style="margin: 0; font-size: 11px; color: #777; text-align: right;">📅 Registro: ${fecha}</p>
+                            </div>
+                        `;
+
+                        L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error detectado:', error);
+                if (reintentos > 0) {
+                    document.getElementById('report-counter').innerText = `🔄 Redireccionando pasarela... (${reintentos})`;
+                    setTimeout(() => cargarAlertas(reintentos - 1), 3000);
+                } else {
+                    document.getElementById('report-counter').innerText = `⚠️ Error de comunicación CORS de seguridad`;
+                }
+            }
+        }
 
         // --- PROGRAMAR LA LEYENDA (Abajo a la izquierda) ---
         const legend = L.control({position: 'bottomleft'});
