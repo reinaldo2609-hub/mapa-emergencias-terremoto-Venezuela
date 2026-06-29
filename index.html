@@ -168,15 +168,22 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
         });
 
         // 3. URL de la API de KoboToolbox    
-        const proxyUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';
+// 3. URL de la API de KoboToolbox optimizada con bypass CORS seguro
+        const koboApiUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';       
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(koboApiUrl)}`;
 
         async function cargarAlertas() {
             try {
+                // Consultamos a través de AllOrigins solicitando la estructura nativa para evitar bloqueos
                 const response = await fetch(proxyUrl);
                 if (!response.ok) throw new Error(`Error de red: ${response.status}`);
                 
                 const jsonWrapper = await response.json();
-                const data = JSON.parse(jsonWrapper.contents); 
+                
+                // Forzamos la decodificación limpia del contenido de KoboToolbox sin importar el navegador
+                const data = (typeof jsonWrapper.contents === 'string') 
+                    ? JSON.parse(jsonWrapper.contents) 
+                    : jsonWrapper.contents;
                 
                 const registros = data.results || [];
                 
