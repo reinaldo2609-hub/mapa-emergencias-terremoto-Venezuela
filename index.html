@@ -199,7 +199,7 @@
                 const data = await response.json(); 
                 const registros = data.results || [];
                 
-                document.getElementById('report-counter').innerText = `📊 ${registros.length} Reportes Verificados`;
+                document.getElementById('report-counter').innerText = `📊 ${registros.length} Reportes`;
 
                 registros.forEach(registro => {
                     if (registro._geolocation && registro._geolocation.length >= 2) {
