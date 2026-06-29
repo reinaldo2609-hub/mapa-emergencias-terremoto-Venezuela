@@ -168,23 +168,25 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
         });
 
         // 3. URL de la API de KoboToolbox    
-// 3. URL de la API de KoboToolbox optimizada con bypass CORS seguro
+// 3. Configuración de API Directa con Token de Autenticación
         const koboApiUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';       
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(koboApiUrl)}`;
 
         async function cargarAlertas() {
             try {
-                // Consultamos a través de AllOrigins solicitando la estructura nativa para evitar bloqueos
-                const response = await fetch(proxyUrl);
+                // Configurar la autorización segura que solicita KoboToolbox
+                const response = await fetch(koboApiUrl, {
+                    method: 'GET',
+                    headers: {
+                        // REEMPLAZA el texto después de 'Token ' con tus letras y números de Kobo
+                        'Authorization': 'Token d94bc9bc2191044fdc135d0ccb2466a113c93664',
+                        'Accept': 'application/json'
+                    }
+                });
+
                 if (!response.ok) throw new Error(`Error de red: ${response.status}`);
                 
-                const jsonWrapper = await response.json();
-                
-                // Forzamos la decodificación limpia del contenido de KoboToolbox sin importar el navegador
-                const data = (typeof jsonWrapper.contents === 'string') 
-                    ? JSON.parse(jsonWrapper.contents) 
-                    : jsonWrapper.contents;
-                
+                // Leemos los datos directos y limpios sin intermediarios inestables
+                const data = await response.json(); 
                 const registros = data.results || [];
                 
                 // Actualizar el contador dinámico en la interfaz
