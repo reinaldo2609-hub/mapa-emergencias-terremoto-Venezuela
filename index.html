@@ -168,33 +168,43 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
         });
 
         // 3. URL de la API de KoboToolbox    
-// 3. Configuración de API Directa con Token de Autenticación
+// 3. Configuración de API con Token y control de reintentos (Anti-Timeout 408)
         const koboApiUrl = 'https://kf.kobotoolbox.org/api/v2/assets/aPcBdrLnEjLyJakCW4UFSP/data.json';       
 
-        async function cargarAlertas() {
+        async function fetchConTimeout(url, opciones, timeout = 15000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, { ...opciones, signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+
+        async function cargarAlertas(reintentos = 3) {
             try {
                 // Configurar la autorización segura que solicita KoboToolbox
-                const response = await fetch(koboApiUrl, {
+                const response = await fetchConTimeout(koboApiUrl, {
                     method: 'GET',
                     headers: {
-                        // REEMPLAZA el texto después de 'Token ' con tus letras y números de Kobo
-                        'Authorization': 'Token d94bc9bc2191044fdc135d0ccb2466a113c93664',
+                        // REEMPLAZA AQUÍ ABAJO CON TU TOKEN REAL (Mantén la palabra 'Token ')
+                        'Authorization': 'Token TU_TOKEN_DE_KOBO_AQUÍ',
                         'Accept': 'application/json'
                     }
-                });
+                }, 20000); // Le damos 20 segundos de espera al servidor antes de caer en timeout
 
                 if (!response.ok) throw new Error(`Error de red: ${response.status}`);
                 
-                // Leemos los datos directos y limpios sin intermediarios inestables
                 const data = await response.json(); 
                 const registros = data.results || [];
                 
-                // Actualizar el contador dinámico en la interfaz
                 document.getElementById('report-counter').innerText = `📊 ${registros.length} Reportes Verificados`;
 
                 registros.forEach(registro => {
                     if (registro._geolocation && registro._geolocation.length >= 2) {
-                        
                         const lat = parseFloat(registro._geolocation[0]);
                         const lng = parseFloat(registro._geolocation[1]);
                         if (isNaN(lat) || isNaN(lng)) return;
@@ -203,7 +213,6 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
                         const fecha = registro['fecha_de_alerta'] || 'Reciente';
                         const fuente = registro['Fuente_de_la_informaci_n'] || 'Usuario de Redes Sociales';
 
-                        // Extraer Adjuntos
                         let fotoUrl = '';
                         let videoUrl = '';
 
@@ -219,7 +228,6 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
                             }
                         }
 
-                        // Construcción del Popup estructurado periodísticamente
                         let popupContent = `
                             <div class="popup-emergencia">
                                 <h3>📍 Reporte de Campo</h3>
@@ -254,8 +262,13 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
                 });
 
             } catch (error) {
-                console.error('Error crítico cargando los datos de KoboToolbox:', error);
-                document.getElementById('report-counter').innerText = `⚠️ Error al conectar con la base de datos`;
+                console.error('Error detectado:', error);
+                if (reintentos > 0) {
+                    document.getElementById('report-counter').innerText = `🔄 Servidor lento, reintentando conexión... (${reintentos})`;
+                    setTimeout(() => cargarAlertas(reintentos - 1), 3000); // Espera 3 segundos y vuelve a intentar
+                } else {
+                    document.getElementById('report-counter').innerText = `⚠️ El servidor de Kobo tardó demasiado en responder`;
+                }
             }
         }
 
